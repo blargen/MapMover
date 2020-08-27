@@ -1,16 +1,25 @@
 require 'redd'
 require 'open-uri'
+require 'yaml'
 
 class MapMover
-  def initialize
+  def create_session
+    creds = YAML.load_file('creds.yaml')
+    begin
     @session = Redd.it(
-        user_agent: 'MapMover',
-        client_id: 'NdKLWqrsIln2wg',
-        secret: 'IpKJ-qJ_tRY2xVTzICXzeHI5I6A',
-        username: 'the_blargen',
-        password: '2 ravens of Odin'
-
+        user_agent: creds['user_agent'],
+        client_id: creds['client_id'],
+        secret: creds['secret'],
+        username: creds['username'],
+        password: creds['password']
     )
+    rescue
+      sleep 10
+      puts "ahhhh!"
+      create_session
+    else
+      puts 'nope, all good'
+    end
   end
 
   def retrieve_saved_maps
@@ -18,7 +27,8 @@ class MapMover
     title_image_hash = {}
     my_saved = @session.me.listing("saved", { limit: 100 }).to_ary
     my_saved.each do |submission|
-      next unless (subreddit_array.include?(submission.subreddit_name_prefixed)) && (submission.is_video == false)
+      next unless subreddit_array.include?(submission.subreddit_name_prefixed) && submission.is_video == false && (submission.url.include?('.jpg') || submission.url.include?('.png'))
+      puts submission.title
       title_image_hash[submission.title] = submission.url
       save_map(title_image_hash)
       unsave_map(submission)
@@ -43,4 +53,5 @@ end
 
 
 map_mover = MapMover.new
+map_mover.create_session
 map_mover.retrieve_saved_maps
